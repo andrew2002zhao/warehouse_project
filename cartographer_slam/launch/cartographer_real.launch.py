@@ -9,7 +9,7 @@ def generate_launch_description():
 
 
     cartographer_config_directory = os.path.join(get_package_share_directory("cartographer_slam"), "config")
-    cartographer_config_file = "cartographer_sim.lua"
+    cartographer_config_file = "cartographer_real.lua"
 
     rviz_file = os.path.join(get_package_share_directory("cartographer_slam"), "rviz", "rviz_config.rviz")
 

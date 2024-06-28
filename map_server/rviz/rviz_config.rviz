@@ -8,7 +8,7 @@ Panels:
         - /TF1/Frames1
         - /Map1
         - /Map1/Topic1
-      Splitter Ratio: 0.5
+      Splitter Ratio: 0.5029411911964417
     Tree Height: 548
   - Class: rviz_common/Selection
     Name: Selection
@@ -54,8 +54,6 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: true
-        map:
-          Value: true
         odom:
           Value: true
         robot_base_docking_contact_link:
@@ -84,25 +82,25 @@ Visualization Manager:
       Show Axes: true
       Show Names: true
       Tree:
-        map:
-          odom:
-            robot_base_footprint:
-              robot_base_link:
-                robot_evelator_base_link:
-                  {}
-                robot_front_cover_link:
-                  robot_base_docking_contact_link:
-                    {}
-                robot_front_laser_base_link:
-                  {}
-                robot_omni_backwheel_link:
-                  {}
-                robot_omni_front_leftwheel_link:
-                  {}
-                robot_omni_front_rightwheel_link:
-                  {}
-              robot_top_cover_link:
+        odom:
+          {}
+        robot_base_footprint:
+          robot_base_link:
+            robot_evelator_base_link:
+              {}
+            robot_front_cover_link:
+              robot_base_docking_contact_link:
                 {}
+            robot_front_laser_base_link:
+              {}
+            robot_omni_backwheel_link:
+              {}
+            robot_omni_front_leftwheel_link:
+              {}
+            robot_omni_front_rightwheel_link:
+              {}
+          robot_top_cover_link:
+            {}
       Update Interval: 0
       Value: true
     - Alpha: 1
@@ -146,7 +144,7 @@ Visualization Manager:
       Enabled: true
       Name: Map
       Topic:
-        Depth: 5
+        Depth: 10000
         Durability Policy: Transient Local
         Filter size: 10
         History Policy: Keep Last
@@ -163,7 +161,7 @@ Visualization Manager:
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
-    Fixed Frame: robot_base_footprint
+    Fixed Frame: map
     Frame Rate: 30
   Name: root
   Tools:
@@ -221,10 +219,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.6403973698616028
+      Pitch: 0.41039761900901794
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.128582715988159
+      Yaw: 2.763585329055786
     Saved: ~
 Window Geometry:
   Displays:
