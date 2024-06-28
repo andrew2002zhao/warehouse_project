@@ -85,25 +85,24 @@ Visualization Manager:
       Show Names: true
       Tree:
         map:
-          {}
-        odom:
-          robot_base_footprint:
-            robot_base_link:
-              robot_evelator_base_link:
-                {}
-              robot_front_cover_link:
-                robot_base_docking_contact_link:
+          odom:
+            robot_base_footprint:
+              robot_base_link:
+                robot_evelator_base_link:
                   {}
-              robot_front_laser_base_link:
+                robot_front_cover_link:
+                  robot_base_docking_contact_link:
+                    {}
+                robot_front_laser_base_link:
+                  {}
+                robot_omni_backwheel_link:
+                  {}
+                robot_omni_front_leftwheel_link:
+                  {}
+                robot_omni_front_rightwheel_link:
+                  {}
+              robot_top_cover_link:
                 {}
-              robot_omni_backwheel_link:
-                {}
-              robot_omni_front_leftwheel_link:
-                {}
-              robot_omni_front_rightwheel_link:
-                {}
-            robot_top_cover_link:
-              {}
       Update Interval: 0
       Value: true
     - Alpha: 1
@@ -164,7 +163,7 @@ Visualization Manager:
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
-    Fixed Frame: odom
+    Fixed Frame: robot_base_footprint
     Frame Rate: 30
   Name: root
   Tools:
