@@ -6,6 +6,8 @@ Panels:
       Expanded:
         - /Global Options1
         - /TF1/Frames1
+        - /Map1
+        - /Map1/Topic1
       Splitter Ratio: 0.5
     Tree Height: 548
   - Class: rviz_common/Selection
@@ -52,6 +54,8 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: true
+        map:
+          Value: true
         odom:
           Value: true
         robot_base_docking_contact_link:
@@ -80,6 +84,8 @@ Visualization Manager:
       Show Axes: true
       Show Names: true
       Tree:
+        map:
+          {}
         odom:
           robot_base_footprint:
             robot_base_link:
@@ -142,7 +148,7 @@ Visualization Manager:
       Name: Map
       Topic:
         Depth: 5
-        Durability Policy: Volatile
+        Durability Policy: Transient Local
         Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
@@ -216,10 +222,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.7803977131843567
+      Pitch: 0.6403973698616028
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 4.5985846519470215
+      Yaw: 3.128582715988159
     Saved: ~
 Window Geometry:
   Displays:
