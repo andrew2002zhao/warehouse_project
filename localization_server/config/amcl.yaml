@@ -1,6 +1,5 @@
 amcl:
   ros__parameters:
-    use_sim_time: True
     alpha1: 0.2
     alpha2: 0.2
     alpha3: 0.2
@@ -18,8 +17,8 @@ amcl:
     laser_min_range: -1.0
     laser_model_type: "likelihood_field"
     max_beams: 60
-    max_particles: 8000
-    min_particles: 200
+    max_particles: 2000
+    min_particles: 500
     odom_frame_id: "odom"
     pf_err: 0.05
     pf_z: 0.99
@@ -37,8 +36,13 @@ amcl:
     z_max: 0.05
     z_rand: 0.5
     z_short: 0.05
-    set_initial_pose: true
-    initial_pose: 
-        x: 0.00
-        y: 0.00
-        yaw: 0.00
+    scan_topic: scan
+    map_topic: map
+    set_initial_pose: false
+    always_reset_initial_pose: false
+    first_map_only: false
+    initial_pose:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      yaw: 0.0

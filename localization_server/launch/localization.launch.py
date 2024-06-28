@@ -11,7 +11,7 @@ def generate_launch_description():
     map_server_config = os.path.join(get_package_share_directory('localization_server'), 'config')
     map_file = PythonExpression(["'", map_server_config, "/", LaunchConfiguration("map_file"), "'"])
    
-    rviz_file = os.path.join(get_package_share_directory('map_server'), 'rviz', 'rviz_config.rviz')
+    rviz_file = os.path.join(get_package_share_directory('localization_server'), 'rviz', 'rviz_config.rviz')
     amcl_yaml = os.path.join(map_server_config, "amcl.yaml")
     container = LaunchDescription(
         [
