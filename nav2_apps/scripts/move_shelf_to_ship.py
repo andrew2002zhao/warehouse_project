@@ -1,12 +1,32 @@
 from nav2_simple_commander.robot_navigator import BasicNavigator
 import rclpy
+from rclpy.node import Node
+from rclpy.duration import Duration
+
 from geometry_msgs.msg._pose_stamped import PoseStamped
 
 import sys
 import threading
+from attach_shelf_interfaces.srv import GoToLoading
 from launch_ros.actions import ComposableNodeContainer
 from launch_ros.descriptions import ComposableNode
 from launch import LaunchService
+
+
+class MinimalClientAsync(Node):
+
+    def __init__(self):
+        super().__init__('minimal_client_async')
+        self.cli = self.create_client(GoToLoading, '/approach_shelf')
+        while not self.cli.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('service not available, waiting again...')
+        self.req = GoToLoading.Request()
+
+    def send_request(self):
+        self.req.attach_to_shelf = True
+        self.future = self.cli.call_async(self.req)
+        rclpy.spin_until_future_complete(self, self.future)
+        return self.future.result()
 
 
 def generate_launch_description():
@@ -38,26 +58,30 @@ def navigation():
     init_pose.pose.orientation.z = 0.0
     init_pose.pose.orientation.w = 1.0
     nav.setInitialPose(init_pose)
-
-    nav.waitUntilNav2Active()
+  
+    nav.waitUntilNav2Active(navigator='/bt_navigator', localizer='/amcl')
 
     # target pose
     loading_pose = PoseStamped()
     loading_pose.header.frame_id = 'map'
     loading_pose.header.stamp = nav.get_clock().now().to_msg()
-    loading_pose.pose.position.x = 5.7
+    loading_pose.pose.position.x = 5.8
     loading_pose.pose.position.y = 0.0
-    loading_pose.pose.orientation.z = -0.70328
-    loading_pose.pose.orientation.w = 0.7109129
+    loading_pose.pose.orientation.z = -0.707
+    loading_pose.pose.orientation.w = 0.707
 
     #move to loading pose
     nav.goToPose(loading_pose)
     while not nav.isTaskComplete():
         feedback = nav.getFeedback()
-        if feedback.navigation_duration > 600:
+        if Duration.from_msg(feedback.navigation_time) > Duration(seconds=180.0):
+            print('Navigation has exceeded timeout of 180s, canceling the request.')
             nav.cancelTask()
-
+    print("ARRIVED AT TARGET POSE")
     #make a service call to the attach shelf service
+    client = MinimalClientAsync()
+    client.send_request()
+    client.destroy_node()
 
 def main():
     rclpy.init()
@@ -66,6 +90,7 @@ def main():
     ls = LaunchService(argv=sys.argv[1:])
     ls.include_launch_description(generate_launch_description())
     ls.run()
+   
     
 
 if __name__ == "__main__":

@@ -76,7 +76,7 @@ namespace nav2_apps{
                     std::vector<float> leg_angles = get_leg_angles__(this -> ranges__, leg_positions);
                     //get the translation amount for center point between the two table leges
                     std::pair<float, float> translation = get_translation_from_current_frame__(this -> ranges__[leg_positions[0]], this -> ranges__[leg_positions[1]], leg_angles[0], leg_angles[1]);
-                    RCLCPP_INFO(this -> get_logger(), "%f, %f", translation.first, translation.second);
+                  
 
                     publish_transform_timer__(translation);
 
@@ -93,7 +93,7 @@ namespace nav2_apps{
                     point.x = translation.first;
                     point.y = translation.second;
                     point.z = 0;
-                    float distance = distance_from_xyz__(point) + 0.3; //0.25 is the distance from the scanner to the laser link
+                    float distance = distance_from_xyz__(point) + 0.3; 
                     RCLCPP_INFO(this -> get_logger(), "%f", distance);
                     auto move_forwards = std::bind(&ApproachService::move_robot__, this, distance);
                    
@@ -175,7 +175,7 @@ namespace nav2_apps{
             std::vector<float> ranges__;
 
             void initialize_qos__(){
-                this -> robot_movement_publisher_qos_.reliability(RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT);
+                this -> robot_movement_publisher_qos_.reliability(RMW_QOS_POLICY_RELIABILITY_RELIABLE);
                 this -> robot_movement_publisher_qos_.durability(RMW_QOS_POLICY_DURABILITY_VOLATILE);
                 this -> robot_movement_publisher_qos_.liveliness(RMW_QOS_POLICY_LIVELINESS_SYSTEM_DEFAULT);
 
@@ -334,7 +334,7 @@ namespace nav2_apps{
                     movement_msg.angular.y = 0;
                   
 
-                    if(abs(current_position - final_position) <= 0.05){
+                    if(abs(current_position - final_position) <= 0.03){
                         //within range
                         
                         this -> robot_movement_publisher_ -> publish(movement_msg);
@@ -374,9 +374,9 @@ namespace nav2_apps{
                     movement_msg.angular.y = 0;
                     movement_msg.angular.z = 0;
 
-                    if(abs(meters - distance_from_xyz__(current_position, starting_position)) <= 0.005){
+                    if(abs(meters - distance_from_xyz__(current_position, starting_position)) <= 0.04){
                         //within range
-                        RCLCPP_INFO(this -> get_logger(), "DONE");
+                     
                         this -> robot_movement_publisher_ -> publish(movement_msg);
                         this -> movement_timer_ -> cancel();
                         this -> done_ = true;
