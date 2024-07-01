@@ -12,8 +12,11 @@ def generate_launch_description():
     map_file = PythonExpression(["'", map_server_config, "/", LaunchConfiguration("map_file"), "'"])
     
     rviz_file = os.path.join(get_package_share_directory('localization_server'), 'rviz', 'rviz_config.rviz')
-    amcl_yaml = os.path.join(map_server_config, "amcl_sim.yaml")
+    amcl_yaml = os.path.join(map_server_config, "amcl_real.yaml")
 
+
+   
+    
     container = LaunchDescription(
         [
             DeclareLaunchArgument("map_file"),
@@ -22,12 +25,12 @@ def generate_launch_description():
                 executable='static_transform_publisher',
                 name='map_to_odom_broadcaster',
                 output='screen',
-                arguments=['0', '0', '0', '0', '0', '0', '1', 'map', 'odom']
+                arguments=['0', '0', '0', '0', '0', '0', '1', 'map', 'robot_odom']
             ),
             Node(
                 package='nav2_map_server',
                 executable='map_server',
-                name='map_server',
+                name='map_server_real',
                 output='screen',
                 parameters=[{'use_sim_time': True}, 
                                 {'yaml_filename': map_file}]
@@ -42,11 +45,11 @@ def generate_launch_description():
             Node(
                 package='nav2_lifecycle_manager',
                 executable='lifecycle_manager',
-                name='lifecycle_manager_localization',
+                name='lifecycle_manager_localization_real',
                 output='screen',
                 parameters=[{'use_sim_time': True},
                             {'autostart': True},
-                            {'node_names':['map_server', 'amcl']}]
+                            {'node_names':['map_server_real', 'amcl']}]
             ),
 
             Node(
