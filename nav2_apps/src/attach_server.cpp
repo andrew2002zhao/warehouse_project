@@ -1,4 +1,5 @@
 #include "rclcpp/callback_group.hpp"
+#include "rclcpp/subscription_options.hpp"
 #include "rclcpp/timer.hpp"
 #include <rclcpp/rclcpp.hpp>
 #include <tf2_msgs/msg/tf_message.hpp>
@@ -7,12 +8,12 @@
 #include <sensor_msgs/msg/laser_scan.hpp>
 #include <attach_shelf_interfaces/srv/go_to_loading.hpp>
 #include <tf2_ros/transform_broadcaster.h>
-#include <std_msgs/msg/empty.hpp>
+#include <std_msgs/msg/string.hpp>
 #include "tf2_ros/transform_listener.h"
 #include "tf2_ros/buffer.h"
 
-
 #include <cmath>
+#include <mutex>
 
 using namespace std::chrono_literals;
 
@@ -24,7 +25,7 @@ using LaserScan = sensor_msgs::msg::LaserScan;
 using Odometry = nav_msgs::msg::Odometry;
 using Point = geometry_msgs::msg::Point;
 using GoToLoading = attach_shelf_interfaces::srv::GoToLoading;
-using Empty = std_msgs::msg::Empty;
+using String = std_msgs::msg::String;
 
 using MovementFunction = std::function<void()>;
 
@@ -41,7 +42,7 @@ namespace nav2_apps{
                 this -> tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(this);
                
                 
-                this -> load_shelf_publisher_ = this -> create_publisher<Empty>("/elevator_up", 10);
+                this -> load_shelf_publisher_ = this -> create_publisher<String>("/elevator_up", 10);
                 this -> robot_movement_publisher_ = this -> create_publisher<Twist>("/diffbot_base_controller/cmd_vel_unstamped", this -> robot_movement_publisher_qos_);
                 this -> robot_laser_subscription_ = this -> create_subscription<LaserScan>("/scan", this -> robot_laser_subscription_qos_, 
                 
@@ -50,12 +51,12 @@ namespace nav2_apps{
                     this -> intensities__ = msg -> intensities;
                     this -> ranges__ = msg -> ranges;
 
-                });
+                }, this -> robot_laser_options_);
 
                 this -> robot_position_subscription_ = this -> create_subscription<Odometry>("/diffbot_base_controller/odom", this -> robot_position_subscription_qos_, [this](const Odometry::SharedPtr msg){
                     this -> quaternion_ = msg -> pose.pose.orientation;
                     this -> point_ = msg -> pose.pose.position;
-                });
+                }, this -> robot_position_options_);
 
     
                 this -> go_to_loading_service_ = this -> create_service<GoToLoading>("/approach_shelf", 
@@ -116,25 +117,37 @@ namespace nav2_apps{
                  
 
                     auto i = std::make_shared<int>(0);
-            
+                  
+                   
+                    //hopefully this is put on a different thread
                     this -> done_timer_ = this -> create_wall_timer(50ms, [this, tasks_to_do, i, response](){
                      
                         if(this -> done_){
-                            RCLCPP_INFO(this -> get_logger(), "%d", *i);
-                            tasks_to_do[*i]();
-                            this -> done_ = false;
-                            (*i)++;
                             if(*i == tasks_to_do.size()){
+
+                                std::lock_guard<std::mutex> lock(mutex_);
                                 this -> done_timer_ -> cancel();
                                 // move shelf
-                                auto msg = Empty();
+                                auto msg = String();
                                 this -> load_shelf_publisher_-> publish(msg);
                                 response -> complete = true;
+                                cv_.notify_one();
+                            }
+                            else{
+                                RCLCPP_INFO(this -> get_logger(), "%d", *i);
+                                tasks_to_do[*i]();
+                                this -> done_ = false;
+                                (*i)++;
                             }
                         }
-                        
                     
-                    }, done_callback_group_);            
+                    }, done_callback_group_);
+
+                    //dont return until async is done
+                    //cannot busy wait
+                    std::unique_lock<std::mutex> lock(mutex_);
+                    cv_.wait(lock);
+
                 });
             }
            
@@ -145,12 +158,15 @@ namespace nav2_apps{
             //laser_scan
             rclcpp::Subscription<LaserScan>::SharedPtr robot_laser_subscription_;
             rclcpp::QoS robot_laser_subscription_qos_{10};
+            std::shared_ptr<rclcpp::CallbackGroup> robot_laser_callback_group_;
+            rclcpp::SubscriptionOptions robot_laser_options_;
             //odometry
             rclcpp::Subscription<Odometry>::SharedPtr robot_position_subscription_;
             rclcpp::QoS robot_position_subscription_qos_{10};
+            std::shared_ptr<rclcpp::CallbackGroup> robot_position_callback_group_;
+            rclcpp::SubscriptionOptions robot_position_options_;
             Quaternion quaternion_;
             Point point_;
-      
             //tf_broadcaster
             std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
             rclcpp::TimerBase::SharedPtr tf_timer_;
@@ -164,9 +180,11 @@ namespace nav2_apps{
             //done 
             rclcpp::TimerBase::SharedPtr done_timer_;
             std::shared_ptr<rclcpp::CallbackGroup> done_callback_group_;
+            std::condition_variable cv_;
+            std::mutex mutex_;
             bool done_;
             //shelf_load
-            rclcpp::Publisher<Empty>::SharedPtr load_shelf_publisher_;
+            rclcpp::Publisher<String>::SharedPtr load_shelf_publisher_;
             
 
         private:
@@ -189,6 +207,10 @@ namespace nav2_apps{
             }
 
             void initialize_callback_group__(){
+                this -> robot_position_callback_group_ = this -> create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+                this -> robot_position_options_.callback_group = this -> robot_position_callback_group_;
+                this -> robot_laser_callback_group_ = this -> create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+                this -> robot_laser_options_.callback_group = this -> robot_laser_callback_group_;
                 this -> transform_callback_group_ = this -> create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
                 this -> robot_movement_publisher_callback_group_ = this -> create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
                 this -> done_callback_group_ = this -> create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
@@ -333,13 +355,14 @@ namespace nav2_apps{
                     movement_msg.angular.x = 0;
                     movement_msg.angular.y = 0;
                   
-
-                    if(abs(current_position - final_position) <= 0.03){
+                    RCLCPP_INFO(this -> get_logger(), "%f", abs(current_position - final_position));
+                    if(abs(current_position - final_position) <= 0.01){
                         //within range
                         
                         this -> robot_movement_publisher_ -> publish(movement_msg);
-                        this -> rotation_timer_ -> cancel();
                         this -> done_ = true;
+                        this -> rotation_timer_ -> cancel();
+                        
                         
                     } else{
                        
@@ -374,12 +397,13 @@ namespace nav2_apps{
                     movement_msg.angular.y = 0;
                     movement_msg.angular.z = 0;
 
-                    if(abs(meters - distance_from_xyz__(current_position, starting_position)) <= 0.04){
+                    if(abs(meters - distance_from_xyz__(current_position, starting_position)) <= 0.03){
                         //within range
                      
                         this -> robot_movement_publisher_ -> publish(movement_msg);
-                        this -> movement_timer_ -> cancel();
                         this -> done_ = true;
+                        this -> movement_timer_ -> cancel();
+                        
                         
                     } else{
                         //outside range
