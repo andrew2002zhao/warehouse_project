@@ -154,15 +154,16 @@ FilterLayer::updateCosts(
   
   max_i = std::min(static_cast<int>(size_x), max_i);
   max_j = std::min(static_cast<int>(size_y), max_j);
-  min_i = std::max(0, static_cast<int>(min_i));
-  min_j = std::max(0, static_cast<int>(min_j));
+  min_i = std::max(0, min_i);
+  min_j = std::max(0, min_j);
   for (int j = min_j; j < max_j; j++) {
     // Reset gradient_index each time when reaching the end of re-calculated window
     // by OY axis.
     for (int i = min_i; i < max_i; i++) {
+      
       int index = master_grid.getIndex(i, j);
       if(withinRectangle(i, j, master_grid)){
-        master_array[index] = 200;
+        master_array[index] = 255;
       }
     }
   }
@@ -170,7 +171,7 @@ FilterLayer::updateCosts(
 
 bool FilterLayer::withinRectangle(const int & i, const int & j, nav2_costmap_2d::Costmap2D & master_grid) {
     float top_left_x = 1.5;
-    float top_left_y = -1.2;
+    float top_left_y = -1.1;
     float bottom_right_x = 5;
     float bottom_right_y = -0.9;
 
@@ -187,7 +188,9 @@ bool FilterLayer::withinRectangle(const int & i, const int & j, nav2_costmap_2d:
     int left_x = std::min(top_left_cells_x, bottom_right_cells_x);
     int right_x = std::max(top_left_cells_x, bottom_right_cells_x);
 
-    if(i <= left_x && i >= right_x && j >= bottom_y && j <= top_y) {
+  
+    if(i >= left_x && i <= right_x && j >= bottom_y && j <= top_y) {
+        
         return true;
     }
     return false;
