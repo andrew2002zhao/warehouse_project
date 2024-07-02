@@ -1,0 +1,5 @@
+<library path="custom_nav2_costmap_plugin_core">
+  <class name="custom_nav2_costmap_plugin/FilterLayer" type="custom_nav2_costmap_plugin::FilterLayer" base_class_type="nav2_costmap_2d::Layer">
+    <description>This is an example plugin which puts repeating costs filters to costmap</description>
+  </class>
+</library>

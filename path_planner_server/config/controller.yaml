@@ -79,11 +79,14 @@ local_costmap:
       resolution: 0.05
       robot_radius: 0.15
       robot_base_frame: robot_base_link
-      plugins: ["voxel_layer", "inflation_layer"]
+      plugins: ["voxel_layer", "custom_filter_layer", "inflation_layer"]
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 3.0
         inflation_radius: 0.35
+      custom_filter_layer:
+        plugin: "custom_nav2_costmap_plugin/FilterLayer"
+        enabled: True
       voxel_layer:
         plugin: "nav2_costmap_2d::VoxelLayer"
         enabled: True
@@ -106,4 +109,5 @@ local_costmap:
           obstacle_min_range: 0.0
       static_layer:
         map_subscribe_transient_local: True
+        
       always_send_full_costmap: True

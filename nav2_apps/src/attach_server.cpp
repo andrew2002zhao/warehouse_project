@@ -93,7 +93,7 @@ namespace nav2_apps{
                     point.x = translation.first;
                     point.y = translation.second;
                     point.z = 0;
-                    float distance = distance_from_xyz__(point) + 0.3; 
+                    float distance = distance_from_xyz__(point) + 0.4; 
                     RCLCPP_INFO(this -> get_logger(), "%f", distance);
                     auto move_forwards = std::bind(&ApproachService::move_robot__, this, distance);
                    

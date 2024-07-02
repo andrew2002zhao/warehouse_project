@@ -1,9 +1,13 @@
 from nav2_simple_commander.robot_navigator import BasicNavigator
+from nav2_simple_commander.costmap_2d import PyCostmap2D
+
 import rclpy
 from rclpy.node import Node
 from rclpy.duration import Duration
 
+
 from geometry_msgs.msg._pose_stamped import PoseStamped
+from nav_msgs.msg import OccupancyGrid
 
 import sys
 import threading
@@ -11,6 +15,8 @@ from attach_shelf_interfaces.srv import GoToLoading
 from launch_ros.actions import ComposableNodeContainer
 from launch_ros.descriptions import ComposableNode
 from launch import LaunchService
+
+import numpy as np
 
 
 class MinimalClientAsync(Node):
@@ -47,8 +53,9 @@ def generate_launch_description():
     return container
 
 def navigation():
-    nav = BasicNavigator()
-
+     
+    nav = BasicNavigator()   
+    c
     # initial pose
     init_pose = PoseStamped()
     init_pose.header.frame_id = 'map'
@@ -60,6 +67,10 @@ def navigation():
     nav.setInitialPose(init_pose)
   
     nav.waitUntilNav2Active(navigator='/bt_navigator', localizer='/amcl')
+
+    # blackout the cone area
+    # [1.5, -1.2] [1.5, -0.9] [5, -1.2] [5, -0.9]
+
 
     # target pose
     loading_pose = PoseStamped()
@@ -82,6 +93,13 @@ def navigation():
     client = MinimalClientAsync()
     client.send_request()
     client.destroy_node()
+
+    # change the footprint of the drone
+    # 0.7wide 0.9 tall approximately
+
+    # set navigation to the bench area
+
+    # change the footprint of the drone back to radius
 
 def main():
     rclpy.init()
