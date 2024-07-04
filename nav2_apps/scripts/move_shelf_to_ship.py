@@ -206,7 +206,7 @@ class NavigationNode(Node):
 
         # need to move forwards 0.3m since its under the shelf
 
-        self.send_move_forwards_request(0.3)
+        self.send_move_forwards_request(0.7)
         
 
         # change the footprint of the drone back to radius

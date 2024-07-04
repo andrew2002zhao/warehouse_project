@@ -27,7 +27,7 @@ using LaserScan = sensor_msgs::msg::LaserScan;
 using Odometry = nav_msgs::msg::Odometry;
 using Point = geometry_msgs::msg::Point;
 using GoToLoading = attach_shelf_interfaces::srv::GoToLoading;
-using MoveForwards = attach_shelf_interfaces::srv::MoveForwards
+using MoveForwards = attach_shelf_interfaces::srv::MoveForwards;
 using String = std_msgs::msg::String;
 
 using MovementFunction = std::function<void()>;
@@ -168,7 +168,7 @@ namespace nav2_apps{
                         
                     }, done_callback_group_);
                     std::unique_lock<std::mutex> lock(move_forwards_mutex_);
-                    move_forwards_cv_.wait(move_forwards_mutex_);
+                    move_forwards_cv_.wait(lock);
                 });
             }
            
