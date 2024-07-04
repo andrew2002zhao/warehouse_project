@@ -1,12 +1,14 @@
 #include "rclcpp/callback_group.hpp"
 #include "rclcpp/subscription_options.hpp"
 #include "rclcpp/timer.hpp"
+#include <condition_variable>
 #include <rclcpp/rclcpp.hpp>
 #include <tf2_msgs/msg/tf_message.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <geometry_msgs/msg/twist.hpp>
 #include <sensor_msgs/msg/laser_scan.hpp>
 #include <attach_shelf_interfaces/srv/go_to_loading.hpp>
+#include <attach_shelf_interfaces/srv/move_forwards.hpp>
 #include <tf2_ros/transform_broadcaster.h>
 #include <std_msgs/msg/string.hpp>
 #include "tf2_ros/transform_listener.h"
@@ -25,6 +27,7 @@ using LaserScan = sensor_msgs::msg::LaserScan;
 using Odometry = nav_msgs::msg::Odometry;
 using Point = geometry_msgs::msg::Point;
 using GoToLoading = attach_shelf_interfaces::srv::GoToLoading;
+using MoveForwards = attach_shelf_interfaces::srv::MoveForwards
 using String = std_msgs::msg::String;
 
 using MovementFunction = std::function<void()>;
@@ -125,13 +128,13 @@ namespace nav2_apps{
                         if(this -> done_){
                             if(*i == tasks_to_do.size()){
 
-                                std::lock_guard<std::mutex> lock(mutex_);
+                                std::lock_guard<std::mutex> lock(done_mutex_);
                                 this -> done_timer_ -> cancel();
                                 // move shelf
                                 auto msg = String();
                                 this -> load_shelf_publisher_-> publish(msg);
                                 response -> complete = true;
-                                cv_.notify_one();
+                                done_cv_.notify_one();
                             }
                             else{
                                 RCLCPP_INFO(this -> get_logger(), "%d", *i);
@@ -145,9 +148,27 @@ namespace nav2_apps{
 
                     //dont return until async is done
                     //cannot busy wait
-                    std::unique_lock<std::mutex> lock(mutex_);
-                    cv_.wait(lock);
+                    std::unique_lock<std::mutex> lock(done_mutex_);
+                    done_cv_.wait(lock);
 
+                });
+
+                this -> move_forwards_service_ = this -> create_service<MoveForwards>("/move_forwards", 
+
+                [this](const MoveForwards::Request::SharedPtr request, const MoveForwards::Response::SharedPtr response){
+
+                    this -> done_ = false;
+                    move_robot__(request -> distance);
+                    this -> move_forwards_timer_ = this -> create_wall_timer(50ms, [this](){
+                        
+                        if(this -> done_){
+                            std::lock_guard<std::mutex> lock(move_forwards_mutex_);
+                            move_forwards_cv_.notify_one();
+                        }
+                        
+                    }, done_callback_group_);
+                    std::unique_lock<std::mutex> lock(move_forwards_mutex_);
+                    move_forwards_cv_.wait(move_forwards_mutex_);
                 });
             }
            
@@ -180,11 +201,17 @@ namespace nav2_apps{
             //done 
             rclcpp::TimerBase::SharedPtr done_timer_;
             std::shared_ptr<rclcpp::CallbackGroup> done_callback_group_;
-            std::condition_variable cv_;
-            std::mutex mutex_;
+            std::condition_variable done_cv_;
+            std::mutex done_mutex_;
             bool done_;
             //shelf_load
             rclcpp::Publisher<String>::SharedPtr load_shelf_publisher_;
+            //move forwards
+            rclcpp::Service<MoveForwards>::SharedPtr move_forwards_service_;
+            rclcpp::TimerBase::SharedPtr move_forwards_timer_;
+            std::condition_variable move_forwards_cv_;
+            std::mutex move_forwards_mutex_;
+            bool move_done_;
             
 
         private:

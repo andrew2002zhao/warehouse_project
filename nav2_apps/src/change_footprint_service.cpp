@@ -17,10 +17,15 @@ namespace nav2_apps{
                 this -> global_publisher_ = this -> create_publisher<Polygon>("/global_costmap/footprint", 10);
                 this -> service_ = this -> create_service<ChangeFootprintPolygon>("/change_footprint", 
                 [this](const ChangeFootprintPolygon::Request::SharedPtr request, const ChangeFootprintPolygon::Response::SharedPtr response){
-                    this -> timer_ -> cancel();
+                    if(this -> timerOn_){
+                        this -> timer_ -> cancel();
+                        this -> timerOn_ = false;
+                    }
+                    
                   
-
+                    this -> timerOn_ = true;
                     this -> timer_ = this -> create_wall_timer(250ms, [this, request](){
+                        
                         this -> local_publisher_ -> publish(request -> polygon);
                         this -> global_publisher_ -> publish(request -> polygon);
                     });
@@ -34,6 +39,7 @@ namespace nav2_apps{
             rclcpp::Publisher<Polygon>::SharedPtr local_publisher_;
             rclcpp::Publisher<Polygon>::SharedPtr global_publisher_;
             rclcpp::TimerBase::SharedPtr timer_;
+            bool timerOn_{false};
 
             Polygon polygon;
     };

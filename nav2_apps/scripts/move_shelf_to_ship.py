@@ -12,10 +12,13 @@ from geometry_msgs.msg import PoseStamped
 from geometry_msgs.msg import Polygon
 from geometry_msgs.msg import Point32
 from std_msgs.msg import String
+from rcl_interfaces.msg import ParameterValue
+
+from attach_shelf_interfaces.srv import GoToLoading, ChangeFootprintPolygon, MoveForwards
+from rcl_interfaces.srv import SetParameters, GetParameters, ListParameters
 
 import sys
 import threading
-from attach_shelf_interfaces.srv import GoToLoading, ChangeFootprintPolygon
 from launch_ros.actions import ComposableNodeContainer
 from launch_ros.descriptions import ComposableNode
 from launch import LaunchService
@@ -28,12 +31,27 @@ class NavigationNode(Node):
     def __init__(self):
         super().__init__('navigation_node')
         self.shelf_cli = self.create_client(GoToLoading, '/approach_shelf')
-        self.footprint_cli = self.create_client(ChangeFootprintPolygon, '/change_footprint')
-        self.elevator_down_publisher_ = self.create_publisher(String, '/elevator_down', 10)
-        while not self.cli.wait_for_service(timeout_sec=1.0):
+        while not self.shelf_cli.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('service not available, waiting again...')
-        self.req = GoToLoading.Request()
-        self.timer = self.create_timer(1.0, self.callback)
+        self.footprint_cli = self.create_client(ChangeFootprintPolygon, '/change_footprint')
+        while not self.footprint_cli.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('service not available, waiting again...')
+
+        self.global_param_cli = self.create_client(SetParameters, '/global_costmap/global_costmap/set_parameters')
+        while not self.global_param_cli.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('service not available, waiting again...')
+        
+        self.move_cli = self.create_client(MoveForwards, "/move_forwards")
+        # self.local_param_cli = self.create_client(SetParameters, '/local_costmap/local_costmap/set_parameters')
+        # while not self.local_param_cli.wait_for_service(timeout_sec=1.0):
+        #     self.get_logger().info('service not available, waiting again...')
+
+        self.elevator_down_publisher_ = self.create_publisher(String, '/elevator_down', 10)
+        
+        self.shelf_req = GoToLoading.Request()
+        self.footprint_req = ChangeFootprintPolygon.Request()
+        self.param_req = SetParameters.Request()
+        self.move_req = MoveForwards.Request()
 
     def send_shelf_request(self):
         self.shelf_req.attach_to_shelf = True
@@ -46,11 +64,19 @@ class NavigationNode(Node):
         self.footprint_future = self.footprint_cli.call_async(self.footprint_req)
         rclpy.spin_until_future_complete(self, self.footprint_future)
         return self.footprint_future.result()
-       
-    def callback(self):
-        self.global_footprint_publisher_.publish(self.footprint_msg)
-        self.local_footprint_publisher_.publish(self.footprint_msg)
-            
+
+    def send_param_request(self, name, value):
+        self.param_req.parameters = [Parameter(name=name, value=value).to_parameter_msg()]
+        # self.param_local_future = self.local_param_cli.call_async(self.param_req.parameters)
+        # rclpy.spin_until_future_complete(self, self.param_local_future)
+        self.param_global_future = self.global_param_cli.call_async(self.param_req)
+        rclpy.spin_until_future_complete(self, self.param_global_future) 
+        return self.param_global_future.result()
+    
+    def send_move_forwards_request(self, value):
+        self.move_req.distance = value
+        self.move_future = self.move_cli.call_async(self.move_req)
+        rclpy.spin_until_future_complete(self, self.move_future)
     
     def generate_rectangle_polygon(self, height, width):
         points = []
@@ -62,14 +88,15 @@ class NavigationNode(Node):
         top_right.x = height / 2
         top_right.y = width / 2
         points.append(top_right)
-        bottom_left = Point32()
-        bottom_left.x = -height / 2
-        bottom_left.y = -width / 2
-        points.append(bottom_left)
         bottom_right = Point32()
         bottom_right.x = -height / 2
         bottom_right.y = width / 2
         points.append(bottom_right)
+        bottom_left = Point32()
+        bottom_left.x = -height / 2
+        bottom_left.y = -width / 2
+        points.append(bottom_left)
+       
         polygon = Polygon()
         polygon.points = points
         return polygon
@@ -84,13 +111,19 @@ class NavigationNode(Node):
             point.x = j
             point.y = (radius ** 2 - j ** 2) ** (1/2)
             points.append(point)
+        for i in range(-100, 100):
+            j = i / 100 * radius
+            point = Point32()
+            point.x = j * -1
+            point.y = ((radius ** 2 - j ** 2) ** (1/2)) * -1
+            points.append(point)
         polygon = Polygon()
         polygon.points = points
         return polygon
     
     def navigate(self):
         nav = BasicNavigator()   
-        # initial pose
+        # # initial pose
         init_pose = PoseStamped()
         init_pose.header.frame_id = 'map'
         init_pose.header.stamp = nav.get_clock().now().to_msg()
@@ -107,7 +140,7 @@ class NavigationNode(Node):
         loading_pose = PoseStamped()
         loading_pose.header.frame_id = 'map'
         loading_pose.header.stamp = nav.get_clock().now().to_msg()
-        loading_pose.pose.position.x = 5.7
+        loading_pose.pose.position.x = 5.8
         loading_pose.pose.position.y = 0.0
         loading_pose.pose.orientation.z = -0.707
         loading_pose.pose.orientation.w = 0.707
@@ -122,16 +155,35 @@ class NavigationNode(Node):
         print("arrived at loading area")
         #make a service call to the attach shelf service
         
-        self.send_request()
-
+        self.send_shelf_request()
 
         # change the footprint of the drone
         # 0.7wide 0.9 tall approximately
 
-
-        rectangle = self.generate_rectangle_polygon(0.9, 0.7)
+        rectangle = self.generate_rectangle_polygon(0.95, 0.9)
         self.send_footprint_request(rectangle)
-        
+
+        self.send_param_request("obstacle_layer.scan.obstacle_min_range", 1.30)
+        self.send_param_request("obstacle_layer.scan.raytrace_min_range", 1.30)
+
+
+        # set navigation to in front of the bench area
+
+        init_bench_pose = PoseStamped()
+        init_bench_pose.header.frame_id = 'map'
+        init_bench_pose.header.stamp = nav.get_clock().now().to_msg()
+        init_bench_pose.pose.position.x = 2.25
+        init_bench_pose.pose.position.y = 0.0
+        init_bench_pose.pose.orientation.z = 0.0
+        init_bench_pose.pose.orientation.w = -1.0
+        nav.goToPose(init_bench_pose)
+        while not nav.isTaskComplete():
+            feedback = nav.getFeedback()
+            if Duration.from_msg(feedback.navigation_time) > Duration(seconds=180.0):
+                print('Navigation has exceeded timeout of 180s, canceling the request.')
+                nav.cancelTask()
+        print("arrived at bench area")
+
         # # set navigation to the bench area
         bench_pose = PoseStamped()
         bench_pose.header.frame_id = 'map'
@@ -152,10 +204,18 @@ class NavigationNode(Node):
         down_msg = String()
         self.elevator_down_publisher_.publish(down_msg)
 
+        # need to move forwards 0.3m since its under the shelf
+
+        self.send_move_forwards_request(0.3)
+        
+
         # change the footprint of the drone back to radius
 
         circle = self.generate_circle_polygon(0.5)
         self.send_footprint_request(circle)
+        self.send_param_request("obstacle_layer.scan.obstacle_min_range", 0.00)
+        self.send_param_request("obstacle_layer.scan.raytrace_min_range", 0.00)
+        
 
         # send back to initial pose
         nav.goToPose(init_pose)
@@ -164,6 +224,8 @@ class NavigationNode(Node):
             if Duration.from_msg(feedback.navigation_time) > Duration(seconds=180.0):
                 print('Navigation has exceeded timeout of 180s, canceling the request.')
                 nav.cancelTask()
+        
+        
 
         print("arrived at initial position")
 

@@ -171,9 +171,9 @@ FilterLayer::updateCosts(
 
 bool FilterLayer::withinRectangle(const int & i, const int & j, nav2_costmap_2d::Costmap2D & master_grid) {
     float top_left_x = 1.5;
-    float top_left_y = -1.1;
+    float top_left_y = -1.2;
     float bottom_right_x = 5;
-    float bottom_right_y = -0.9;
+    float bottom_right_y = -0.8;
 
     unsigned int top_left_cells_x = 0;
     unsigned int top_left_cells_y = 0;
