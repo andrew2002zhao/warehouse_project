@@ -28,6 +28,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/GoToLoading.srv"
   "srv/ChangeFootprintPolygon.srv"
   "srv/MoveForwards.srv"
+  "srv/Rotate.srv"
   DEPENDENCIES
   std_msgs
   geometry_msgs

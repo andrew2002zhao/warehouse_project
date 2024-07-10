@@ -53,7 +53,7 @@ def generate_launch_description():
                 executable='lifecycle_manager',
                 name='lifecycle_manager_planner',
                 output='screen',
-                parameters=[{'use_sim_time': True},
+                parameters=[{'use_sim_time': False},
                             {'autostart': True},
                             {'node_names':['planner_server', 'controller_server', 'bt_navigator', 'behavior_server']}]
             ),
@@ -63,6 +63,7 @@ def generate_launch_description():
                 executable='rviz2',
                 name='rviz2',
                 output='screen',
+                parameters=[{'use_sim_time': False}],
                 arguments=['-d', rviz_file]
             )
         ]

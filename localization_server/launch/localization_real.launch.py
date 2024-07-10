@@ -25,14 +25,16 @@ def generate_launch_description():
                 executable='static_transform_publisher',
                 name='map_to_odom_broadcaster',
                 output='screen',
+                parameters=[{'use_sim_time': False}],
                 arguments=['0', '0', '0', '0', '0', '0', '1', 'map', 'robot_odom']
             ),
+           
             Node(
                 package='nav2_map_server',
                 executable='map_server',
                 name='map_server_real',
                 output='screen',
-                parameters=[{'use_sim_time': True}, 
+                parameters=[{'use_sim_time': False}, 
                                 {'yaml_filename': map_file}]
             ),
             Node(
@@ -47,7 +49,7 @@ def generate_launch_description():
                 executable='lifecycle_manager',
                 name='lifecycle_manager_localization_real',
                 output='screen',
-                parameters=[{'use_sim_time': True},
+                parameters=[{'use_sim_time': False},
                             {'autostart': True},
                             {'node_names':['map_server_real', 'amcl']}]
             ),
@@ -57,6 +59,7 @@ def generate_launch_description():
                 executable='rviz2',
                 name='rviz2',
                 output='screen',
+                parameters=[{'use_sim_time': False}],
                 arguments=['-d', rviz_file]
             )
         ]

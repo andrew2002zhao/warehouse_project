@@ -52,10 +52,23 @@ ament_target_dependencies(change_footprint_service
 )
 rclcpp_components_register_nodes(change_footprint_service "nav2_apps::ChangeFootprintService")
 
+add_library(attach_server_real SHARED src/attach_server_real.cpp)
+ament_target_dependencies(attach_server_real
+	rclcpp
+	rclcpp_components
+	nav_msgs
+	sensor_msgs
+	geometry_msgs
+	attach_shelf_interfaces
+	tf2_ros
+)
+rclcpp_components_register_nodes(attach_server_real "nav2_apps::ApproachServiceReal")
+
 install(
 	TARGETS
 	attach_server
 	change_footprint_service
+	attach_server_real
 	DESTINATION
 	lib/
 )
