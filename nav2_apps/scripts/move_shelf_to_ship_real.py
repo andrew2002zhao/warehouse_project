@@ -28,8 +28,6 @@ import numpy as np
 
 import math
 
-import tf
-
 import tf2_ros
 
 
@@ -167,63 +165,48 @@ class NavigationNode(Node):
     def navigate(self):
 
         self.send_reinit_request()
-        self.send_rotate_request(6.27)
+        self.send_rotate_request(3.14)
+        self.send_rotate_request(3.15)
 
         # publish a static transform from robot position to odom  
             
         
-        broadcaster = tf2_ros.StaticTransformBroadcaster()
-        static_transformStamped = TransformStamped()
-   
-        static_transformStamped.header.stamp = rclpy.Time.now()
-        static_transformStamped.header.frame_id = "map"
-        static_transformStamped.child_frame_id = "robot_odom"
-   
-        static_transformStamped.transform.translation.x = self.current_position.pose.pose.position.x
-        static_transformStamped.transform.translation.y = self.current_position.pose.pose.position.y
-        static_transformStamped.transform.translation.z = self.current_position.pose.pose.position.z
-   
-        static_transformStamped.transform.rotation.x = self.current_position.pose.pose.orientation.x
-        static_transformStamped.transform.rotation.y = self.current_position.pose.pose.orientation.y
-        static_transformStamped.transform.rotation.z = self.current_position.pose.pose.orientation.z
-        static_transformStamped.transform.rotation.w = self.current_position.pose.pose.orientation.w
-  
-        broadcaster.sendTransform(static_transformStamped)
+      
        
 
         nav = BasicNavigator()   
-        # # initial pose
+        # # # initial pose
         init_pose = PoseStamped()
         init_pose.header.frame_id = 'map'
         init_pose.header.stamp = nav.get_clock().now().to_msg()
 
-        # extract position from position subscription
+        # # extract position from position subscription
 
-        init_pose.pose.position.x = 0.0
-        init_pose.pose.position.y = 0.0
+        init_pose.pose.position.x = -0.35
+        init_pose.pose.position.y = -0.35
         init_pose.pose.orientation.z = 0.0
         init_pose.pose.orientation.w = 0.0
-        nav.setInitialPose(init_pose)
+        
     
         nav.waitUntilNav2Active(navigator='/bt_navigator', localizer='/amcl')
-        # print(init_pose.pose.position.x, init_pose.pose.position.y)
+        # # print(init_pose.pose.position.x, init_pose.pose.position.y)
 
-        # orientation_list = [self.current_position.pose.pose.orientation.x, self.current_position.pose.pose.orientation.y, 
-        #                     self.current_position.pose.pose.orientation.z, self.current_position.pose.pose.orientation.w]
+        # # orientation_list = [self.current_position.pose.pose.orientation.x, self.current_position.pose.pose.orientation.y, 
+        # #                     self.current_position.pose.pose.orientation.z, self.current_position.pose.pose.orientation.w]
         
-        # (roll, pitch, yaw) = euler_from_quaternion(orientation_list)
-        # print(yaw)
+        # # (roll, pitch, yaw) = euler_from_quaternion(orientation_list)
+        # # print(yaw)
 
-        # # target pose
+        # # # target pose
         loading_pose = PoseStamped()
         loading_pose.header.frame_id = 'map'
         loading_pose.header.stamp = nav.get_clock().now().to_msg()
-        loading_pose.pose.position.x = 3.8
-        loading_pose.pose.position.y = 0.0
-        loading_pose.pose.orientation.z = 0.0
-        loading_pose.pose.orientation.w = 0.0
+        loading_pose.pose.position.x = 4
+        loading_pose.pose.position.y = -2
+        loading_pose.pose.orientation.z = -0.87
+        loading_pose.pose.orientation.w = 0.50
 
-        #move to loading pose
+        # #move to loading pose
         nav.goToPose(loading_pose)
         while not nav.isTaskComplete():
             feedback = nav.getFeedback()
@@ -231,81 +214,81 @@ class NavigationNode(Node):
                 print('Navigation has exceeded timeout of 180s, canceling the request.')
                 nav.cancelTask()
         print("arrived at loading area")
-        #make a service call to the attach shelf service
+        # make a service call to the attach shelf service
         
-        # self.send_shelf_request()
+        self.send_shelf_request()
 
-        # # change the footprint of the drone
-        # # 0.7wide 0.9 tall approximately
+        # # # change the footprint of the drone
+        # # # 0.7wide 0.9 tall approximately
 
-        # rectangle = self.generate_rectangle_polygon(0.95, 0.9)
-        # self.send_footprint_request(rectangle)
+        rectangle = self.generate_rectangle_polygon(0.95, 0.9)
+        self.send_footprint_request(rectangle)
 
-        # self.send_param_request("obstacle_layer.scan.obstacle_min_range", 1.30)
-        # self.send_param_request("obstacle_layer.scan.raytrace_min_range", 1.30)
+        self.send_param_request("obstacle_layer.scan.obstacle_min_range", 1.30)
+        self.send_param_request("obstacle_layer.scan.raytrace_min_range", 1.30)
 
 
         # # set navigation to in front of the bench area
 
-        # init_bench_pose = PoseStamped()
-        # init_bench_pose.header.frame_id = 'map'
-        # init_bench_pose.header.stamp = nav.get_clock().now().to_msg()
-        # init_bench_pose.pose.position.x = 1.75
-        # init_bench_pose.pose.position.y = -0.65
-        # init_bench_pose.pose.orientation.z = -0.7433
-        # init_bench_pose.pose.orientation.w = 0.669
-        # nav.goToPose(init_bench_pose)
-        # while not nav.isTaskComplete():
-        #     feedback = nav.getFeedback()
-        #     if Duration.from_msg(feedback.navigation_time) > Duration(seconds=180.0):
-        #         print('Navigation has exceeded timeout of 180s, canceling the request.')
-        #         nav.cancelTask()
-        # print("arrived at bench area")
+        init_bench_pose = PoseStamped()
+        init_bench_pose.header.frame_id = 'map'
+        init_bench_pose.header.stamp = nav.get_clock().now().to_msg()
+        init_bench_pose.pose.position.x = 1.75
+        init_bench_pose.pose.position.y = -0.65
+        init_bench_pose.pose.orientation.z = 0.71
+        init_bench_pose.pose.orientation.w = 0.71
+        nav.goToPose(init_bench_pose)
+        while not nav.isTaskComplete():
+            feedback = nav.getFeedback()
+            if Duration.from_msg(feedback.navigation_time) > Duration(seconds=180.0):
+                print('Navigation has exceeded timeout of 180s, canceling the request.')
+                nav.cancelTask()
+        print("arrived at loading bench area")
 
         # # # set navigation to the bench area
-        # bench_pose = PoseStamped()
-        # bench_pose.header.frame_id = 'map'
-        # bench_pose.header.stamp = nav.get_clock().now().to_msg()
-        # bench_pose.pose.position.x = 1.75
-        # bench_pose.pose.position.y = 0.61
-        # bench_pose.pose.orientation.z = -0.63832
-        # bench_pose.pose.orientation.w = 0.73019
-        # nav.goToPose(bench_pose)
-        # while not nav.isTaskComplete():
-        #     feedback = nav.getFeedback()
-        #     if Duration.from_msg(feedback.navigation_time) > Duration(seconds=180.0):
-        #         print('Navigation has exceeded timeout of 180s, canceling the request.')
-        #         nav.cancelTask()
-        # print("arrived at bench area")
+        bench_pose = PoseStamped()
+        bench_pose.header.frame_id = 'map'
+        bench_pose.header.stamp = nav.get_clock().now().to_msg()
+        bench_pose.pose.position.x = 2.0
+        bench_pose.pose.position.y = 0.5
+        bench_pose.pose.orientation.z = -0.71
+        bench_pose.pose.orientation.w = 0.71
+        nav.goToPose(bench_pose)
+        while not nav.isTaskComplete():
+            feedback = nav.getFeedback()
+            if Duration.from_msg(feedback.navigation_time) > Duration(seconds=180.0):
+                print('Navigation has exceeded timeout of 180s, canceling the request.')
+                nav.cancelTask()
+        print("arrived at bench area")
 
-        # # # lower the shelf
-        # down_msg = String()
-        # self.elevator_down_publisher_.publish(down_msg)
+        # lower the shelf
+        down_msg = String()
+        self.elevator_down_publisher_.publish(down_msg)
 
-        # # need to move forwards 0.3m since its under the shelf
+        # need to move forwards 0.3m since its under the shelf
 
-        # self.send_move_forwards_request(0.7)
-        
+        self.send_move_forwards_request(0.7)
+
 
         # # change the footprint of the drone back to radius
 
-        # circle = self.generate_circle_polygon(0.5)
-        # self.send_footprint_request(circle)
-        # self.send_param_request("obstacle_layer.scan.obstacle_min_range", 0.00)
-        # self.send_param_request("obstacle_layer.scan.raytrace_min_range", 0.00)
+        circle = self.generate_circle_polygon(0.5)
+        self.send_footprint_request(circle)
+        self.send_param_request("obstacle_layer.scan.obstacle_min_range", 0.00)
+        self.send_param_request("obstacle_layer.scan.raytrace_min_range", 0.00)
         
 
         # # send back to initial pose
-        # nav.goToPose(init_pose)
-        # while not nav.isTaskComplete():
-        #     feedback = nav.getFeedback()
-        #     if Duration.from_msg(feedback.navigation_time) > Duration(seconds=180.0):
-        #         print('Navigation has exceeded timeout of 180s, canceling the request.')
-        #         nav.cancelTask()
+        nav.goToPose(init_pose)
+        while not nav.isTaskComplete():
+            feedback = nav.getFeedback()
+            if Duration.from_msg(feedback.navigation_time) > Duration(seconds=180.0):
+                print('Navigation has exceeded timeout of 180s, canceling the request.')
+                nav.cancelTask()
         
         
 
-        # print("arrived at initial position")
+        print("arrived at initial position")
 
 
 

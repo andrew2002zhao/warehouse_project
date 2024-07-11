@@ -35,7 +35,7 @@ using Rotate = attach_shelf_interfaces::srv::Rotate;
 using MovementFunction = std::function<void()>;
 
 #define PI 3.141592
-#define LEG_INTENSITY 6000
+#define LEG_INTENSITY 4000
 
 namespace nav2_apps{
     class ApproachServiceReal : public rclcpp::Node {
@@ -70,6 +70,7 @@ namespace nav2_apps{
                     
 
                     int legs = get_number_of_intensities__(this -> intensities__);
+                    RCLCPP_INFO(this -> get_logger(), "%d", legs);
                     if(legs <= 1){
                         RCLCPP_INFO(this -> get_logger(), "ONLY 1 LEG");
                         response -> complete = false;
@@ -92,7 +93,7 @@ namespace nav2_apps{
                     float radians = atan2(translation.second, translation.first);
                     // radians *= -1;
                     auto correct_orientation = std::bind(&ApproachServiceReal::rotate_robot__, this, radians);
-                    RCLCPP_INFO(this -> get_logger(), "%f", radians);
+                    RCLCPP_INFO(this -> get_logger(), "correct_orientation %f", radians);
                     //get tf from robot_base_link to cart_frame
                     //move forwards by tf amount
                     auto point = Point();
@@ -343,7 +344,7 @@ namespace nav2_apps{
                 RCLCPP_INFO(this -> get_logger(), "%f", a4);
                 RCLCPP_INFO(this -> get_logger(), "%f", a1);
                 //angular difference
-                float a5 = a1 + a4;
+                float a5 = a4 + a1;
                 std::pair<float, float> translation = {cos(a5) * l4, sin(a5) * l4};
                 return translation;
             }
@@ -385,10 +386,9 @@ namespace nav2_apps{
             void rotate_robot__(float radians){
                 this -> done_ = false;
                 float current_position = quaternion_to_yaw__(this -> quaternion_);
-                RCLCPP_INFO(this -> get_logger(), "%f", current_position);
-                RCLCPP_INFO(this -> get_logger(), "%f", radians);
+                
                 float final_position = current_position + radians;
-                RCLCPP_INFO(this -> get_logger(), "%f", final_position);
+              
                 if(final_position > PI) {
                     final_position = final_position - 2 * PI;
                 }
@@ -407,8 +407,8 @@ namespace nav2_apps{
                     movement_msg.angular.x = 0;
                     movement_msg.angular.y = 0;
                   
-                    RCLCPP_INFO(this -> get_logger(), "%f", abs(current_position - final_position));
-                    if(abs(current_position - final_position) <= 0.01){
+                    
+                    if(abs(current_position - final_position) <= 0.02){
                         //within range
                         
                         this -> robot_movement_publisher_ -> publish(movement_msg);
