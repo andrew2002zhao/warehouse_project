@@ -388,16 +388,18 @@ namespace nav2_apps{
                 float current_position = quaternion_to_yaw__(this -> quaternion_);
                 
                 float final_position = current_position + radians;
-              
+                float original_final = final_position;
                 if(final_position > PI) {
                     final_position = final_position - 2 * PI;
                 }
                 else if (final_position < -1 * PI){
                     final_position = final_position + 2 * PI;
                 }
+                
+                RCLCPP_INFO(this -> get_logger(), "%f", original_final);
                 RCLCPP_INFO(this -> get_logger(), "%f", final_position);
 
-                this -> rotation_timer_ = this -> create_wall_timer(50ms, [this, final_position](){
+                this -> rotation_timer_ = this -> create_wall_timer(50ms, [this, final_position, original_final](){
                     float current_position = quaternion_to_yaw__(this -> quaternion_);
 
                     auto movement_msg = Twist();
@@ -417,9 +419,8 @@ namespace nav2_apps{
                         
                         
                     } else{
-                       
                         //outside range
-                        if(final_position > 0){
+                        if(original_final > 0){
                             //counter clockwise
                             movement_msg.angular.z = 0.2;
                         }

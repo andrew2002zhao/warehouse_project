@@ -165,14 +165,10 @@ class NavigationNode(Node):
     def navigate(self):
 
         self.send_reinit_request()
-        self.send_rotate_request(3.14)
-        self.send_rotate_request(3.15)
-
-        # publish a static transform from robot position to odom  
-            
-        
       
-       
+        self.send_rotate_request(6.26)
+        # self.send_rotate_request(1.57)
+        # publish a static transform from robot position to odom  
 
         nav = BasicNavigator()   
         # # # initial pose
