@@ -197,8 +197,8 @@ class NavigationNode(Node):
         loading_pose = PoseStamped()
         loading_pose.header.frame_id = 'map'
         loading_pose.header.stamp = nav.get_clock().now().to_msg()
-        loading_pose.pose.position.x = 4
-        loading_pose.pose.position.y = -2
+        loading_pose.pose.position.x = 4.0
+        loading_pose.pose.position.y = -2.0
         loading_pose.pose.orientation.z = -0.87
         loading_pose.pose.orientation.w = 0.50
 
