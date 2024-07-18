@@ -10,9 +10,8 @@
 #include <attach_shelf_interfaces/srv/go_to_loading.hpp>
 #include <attach_shelf_interfaces/srv/move_forwards.hpp>
 #include <attach_shelf_interfaces/srv/rotate.hpp>
-#include <tf2_ros/transform_broadcaster.h>
+#include <tf2_ros/static_transform_broadcaster.h>
 #include <std_msgs/msg/string.hpp>
-#include "tf2_ros/transform_listener.h"
 #include "tf2_ros/buffer.h"
 
 #include <cmath>
@@ -35,7 +34,7 @@ using Rotate = attach_shelf_interfaces::srv::Rotate;
 using MovementFunction = std::function<void()>;
 
 #define PI 3.141592
-#define LEG_INTENSITY 4000
+#define LEG_INTENSITY 3000
 
 namespace nav2_apps{
     class ApproachServiceReal : public rclcpp::Node {
@@ -44,7 +43,7 @@ namespace nav2_apps{
                 this -> initialize_qos__();
                 this -> initialize_callback_group__();
 
-                this -> tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(this);
+                this -> static_tf_broadcaster_ = std::make_shared<tf2_ros::StaticTransformBroadcaster>(this);
                
                 
                 this -> load_shelf_publisher_ = this -> create_publisher<String>("/elevator_up", 10);
@@ -77,6 +76,7 @@ namespace nav2_apps{
                         return;
                     }
                     RCLCPP_INFO(this -> get_logger(), "DETECTED 2 LEGS");
+                    
                     //parse the intensities to find the position of the legs
                     std::vector<int> leg_positions = this -> get_leg_positions__(intensities__);
                     //get the leg angles from the positions
@@ -86,45 +86,114 @@ namespace nav2_apps{
                   
 
                     publish_transform_timer__(translation);
-
+                   
                     // rotate to correct orientation
                     
                     this -> done_ = true;
                     float radians = atan2(translation.second, translation.first);
+                    RCLCPP_INFO(this -> get_logger(), "correct_orientation %f", radians);
                     // radians *= -1;
                     auto correct_orientation = std::bind(&ApproachServiceReal::rotate_robot__, this, radians);
-                    RCLCPP_INFO(this -> get_logger(), "correct_orientation %f", radians);
+                    
                     //get tf from robot_base_link to cart_frame
-                    //move forwards by tf amount
+                    //move forwards by half of tf amount
                     auto point = Point();
                     point.x = translation.first;
                     point.y = translation.second;
                     point.z = 0;
-                    float distance = distance_from_xyz__(point) + 0.4; 
+                    //try moving a little closer
+                    float distance = distance_from_xyz__(point); 
                     RCLCPP_INFO(this -> get_logger(), "%f", distance);
-                    auto move_forwards = std::bind(&ApproachServiceReal::move_robot__, this, distance);
-                   
-                    // //rotate again to correct
-                    // correction_radians = quaternion_to_yaw__(this -> target_quaternion_);
-                    // auto second_correction = std::bind(&ApproachServiceReal::rotate_robot__, this, radians);
+                    auto move_forwards = std::bind(&ApproachServiceReal::move_robot__, this, distance * 0.5);
 
-                    //move forwards 30cm
-               
-                    float shelf_distance = 0.3;
-                    auto shelf_forwards = std::bind(&ApproachServiceReal::move_robot__, this, shelf_distance);
-                  
-                    
+                     // //rotate again to correct
+                     //try to rotate a little bit more to cancel out error from rotate methods
+                    float correction_radians = (-1 * radians) * 1.02 ;
+                    auto second_correction = std::bind(&ApproachServiceReal::rotate_robot__, this, correction_radians);
+
+                   
 
                     std::vector<MovementFunction> tasks_to_do = {
                         correct_orientation, 
                         move_forwards, 
-                        shelf_forwards
+                        second_correction,
                     };
                  
 
                     auto i = std::make_shared<int>(0);
                   
                    
+                    //hopefully this is put on a different thread
+                    this -> done_timer_ = this -> create_wall_timer(50ms, [this, tasks_to_do, i, response](){
+                     
+                        if(this -> done_){
+                            if(*i == tasks_to_do.size()){
+
+                                std::lock_guard<std::mutex> lock(done_mutex_);
+                                this -> done_timer_ -> cancel();
+                                done_cv_.notify_one();
+                            }
+                            else{
+                                RCLCPP_INFO(this -> get_logger(), "%d", *i);
+                                tasks_to_do[*i]();
+                                this -> done_ = false;
+                                (*i)++;
+                            }
+                        }
+                    
+                    }, done_callback_group_);
+
+                    //dont return until async is done
+                    //cannot busy wait
+                    std::unique_lock<std::mutex> lock(done_mutex_);
+                    done_cv_.wait(lock);
+
+                    //repeat this process a 2nd time 
+                    RCLCPP_INFO(this -> get_logger(), "HELLO");
+                    //parse the intensities to find the position of the legs
+                    std::vector<int> leg_positions_2 = this -> get_leg_positions__(intensities__);
+                    //get the leg angles from the positions
+                    std::vector<float> leg_angles_2 = get_leg_angles__(this -> ranges__, leg_positions_2);
+                    //get the translation amount for center point between the two table leges
+                    std::pair<float, float> translation_2 = get_translation_from_current_frame__(this -> ranges__[leg_positions_2[0]], this -> ranges__[leg_positions_2[1]], leg_angles_2[0], leg_angles_2[1]);
+                    point.x = translation_2.first;
+                    point.y = translation_2.second;
+                    point.z = 0;
+                    publish_transform_timer__(translation_2);
+                    
+                    // rotate to correct orientation
+                    
+                    this -> done_ = true;
+                    float radians_2 = atan2(translation_2.second, translation_2.first);
+                    RCLCPP_INFO(this -> get_logger(), "correct_orientation %f", radians_2);
+                    // radians *= -1;
+                    auto third_correction = std::bind(&ApproachServiceReal::rotate_robot__, this, radians_2);
+                    
+                    //try moving a little closer
+                   
+                    
+                    float distance_2 = distance_from_xyz__(point); 
+                   
+                    auto second_move_forwards = std::bind(&ApproachServiceReal::move_robot__, this, distance_2);
+
+                    // //rotate again to correct
+                     //try to rotate a little bit more to cancel out error from rotate methods
+                    float correction_radians_2 = (-1 * radians_2) * 1.02 ;
+                    auto fourth_correction = std::bind(&ApproachServiceReal::rotate_robot__, this, correction_radians_2);
+                    
+                    //move forwards 30cm
+               
+                    float shelf_distance = 0.6;
+                    auto shelf_forwards = std::bind(&ApproachServiceReal::move_robot__, this, shelf_distance);
+
+                    tasks_to_do = {
+                        third_correction,
+                        second_move_forwards,
+                        fourth_correction,
+                        shelf_forwards
+                    };
+
+                    i = std::make_shared<int>(0);
                     //hopefully this is put on a different thread
                     this -> done_timer_ = this -> create_wall_timer(50ms, [this, tasks_to_do, i, response](){
                      
@@ -151,7 +220,6 @@ namespace nav2_apps{
 
                     //dont return until async is done
                     //cannot busy wait
-                    std::unique_lock<std::mutex> lock(done_mutex_);
                     done_cv_.wait(lock);
 
                 });
@@ -211,7 +279,7 @@ namespace nav2_apps{
             Quaternion quaternion_;
             Point point_;
             //tf_broadcaster
-            std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
+            std::shared_ptr<tf2_ros::StaticTransformBroadcaster> static_tf_broadcaster_;
             rclcpp::TimerBase::SharedPtr tf_timer_;
             std::shared_ptr<rclcpp::CallbackGroup> transform_callback_group_;
             //twist
@@ -275,7 +343,7 @@ namespace nav2_apps{
                 bool is_leg = false;
                 for(int i = 0; i < intensities.size(); i++) {
                     if(intensities[i] > LEG_INTENSITY) {
-                        
+                        RCLCPP_INFO(this -> get_logger(), "intensities : %f", intensities[i]);
                         is_leg = true;
                     }
                     else{
@@ -372,7 +440,7 @@ namespace nav2_apps{
                 
                     t_send.transform.rotation = this -> quaternion_;
 
-                    tf_broadcaster_-> sendTransform(t_send);
+                    static_tf_broadcaster_-> sendTransform(t_send);
 
             
                     auto point = Point();
@@ -388,7 +456,6 @@ namespace nav2_apps{
                 float current_position = quaternion_to_yaw__(this -> quaternion_);
                 
                 float final_position = current_position + radians;
-                float original_final = final_position;
                 if(final_position > PI) {
                     final_position = final_position - 2 * PI;
                 }
@@ -396,10 +463,10 @@ namespace nav2_apps{
                     final_position = final_position + 2 * PI;
                 }
                 
-                RCLCPP_INFO(this -> get_logger(), "%f", original_final);
+        
                 RCLCPP_INFO(this -> get_logger(), "%f", final_position);
 
-                this -> rotation_timer_ = this -> create_wall_timer(50ms, [this, final_position, original_final](){
+                this -> rotation_timer_ = this -> create_wall_timer(50ms, [this, final_position, radians](){
                     float current_position = quaternion_to_yaw__(this -> quaternion_);
 
                     auto movement_msg = Twist();
@@ -410,7 +477,7 @@ namespace nav2_apps{
                     movement_msg.angular.y = 0;
                   
                     
-                    if(abs(current_position - final_position) <= 0.02){
+                    if(abs(current_position - final_position) <= 0.01){
                         //within range
                         
                         this -> robot_movement_publisher_ -> publish(movement_msg);
@@ -420,7 +487,7 @@ namespace nav2_apps{
                         
                     } else{
                         //outside range
-                        if(original_final > 0){
+                        if(radians > 0){
                             //counter clockwise
                             movement_msg.angular.z = 0.2;
                         }

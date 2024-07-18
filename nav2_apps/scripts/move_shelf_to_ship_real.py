@@ -167,31 +167,15 @@ class NavigationNode(Node):
         self.send_reinit_request()
       
         self.send_rotate_request(6.26)
-        # self.send_rotate_request(1.57)
+   
         # publish a static transform from robot position to odom  
 
         nav = BasicNavigator()   
-        # # # initial pose
-        init_pose = PoseStamped()
-        init_pose.header.frame_id = 'map'
-        init_pose.header.stamp = nav.get_clock().now().to_msg()
-
-        # # extract position from position subscription
-
-        init_pose.pose.position.x = -0.35
-        init_pose.pose.position.y = -0.35
-        init_pose.pose.orientation.z = 0.0
-        init_pose.pose.orientation.w = 0.0
         
+       
     
         nav.waitUntilNav2Active(navigator='/bt_navigator', localizer='/amcl')
-        # # print(init_pose.pose.position.x, init_pose.pose.position.y)
-
-        # # orientation_list = [self.current_position.pose.pose.orientation.x, self.current_position.pose.pose.orientation.y, 
-        # #                     self.current_position.pose.pose.orientation.z, self.current_position.pose.pose.orientation.w]
-        
-        # # (roll, pitch, yaw) = euler_from_quaternion(orientation_list)
-        # # print(yaw)
+ 
 
         # # # target pose
         loading_pose = PoseStamped()
@@ -214,8 +198,8 @@ class NavigationNode(Node):
         
         self.send_shelf_request()
 
-        # # # change the footprint of the drone
-        # # # 0.7wide 0.9 tall approximately
+        # # change the footprint of the drone
+        # # 0.7wide 0.9 tall approximately
 
         rectangle = self.generate_rectangle_polygon(0.95, 0.9)
         self.send_footprint_request(rectangle)
@@ -272,6 +256,18 @@ class NavigationNode(Node):
         self.send_footprint_request(circle)
         self.send_param_request("obstacle_layer.scan.obstacle_min_range", 0.00)
         self.send_param_request("obstacle_layer.scan.raytrace_min_range", 0.00)
+        # # initial pose
+        init_pose = PoseStamped()
+        init_pose.header.frame_id = 'map'
+        init_pose.header.stamp = nav.get_clock().now().to_msg()
+
+        # # extract position from position subscription
+
+        init_pose.pose.position.x = -0.35
+        init_pose.pose.position.y = -0.35
+        init_pose.pose.orientation.z = 0.0
+        init_pose.pose.orientation.w = 0.0
+        
         
 
         # # send back to initial pose
