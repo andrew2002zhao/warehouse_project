@@ -202,9 +202,7 @@ namespace nav2_apps{
 
                                 std::lock_guard<std::mutex> lock(done_mutex_);
                                 this -> done_timer_ -> cancel();
-                                // move shelf
-                                auto msg = String();
-                                this -> load_shelf_publisher_-> publish(msg);
+                                
                                 response -> complete = true;
                                 done_cv_.notify_one();
                             }
