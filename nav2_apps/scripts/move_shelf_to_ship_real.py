@@ -164,9 +164,9 @@ class NavigationNode(Node):
     
     def navigate(self):
 
-        # self.send_reinit_request()
+        self.send_reinit_request()
       
-        # self.send_rotate_request(6.26)
+        self.send_rotate_request(6.26)
    
         # # # publish a static transform from robot position to odom  
 
@@ -174,26 +174,26 @@ class NavigationNode(Node):
 
         nav.waitUntilNav2Active(navigator='/bt_navigator', localizer='/amcl')
  
-        # # # # # # target pose
-        # loading_pose = PoseStamped()
-        # loading_pose.header.frame_id = 'map'
-        # loading_pose.header.stamp = nav.get_clock().now().to_msg()
-        # loading_pose.pose.position.x = 4.0
-        # loading_pose.pose.position.y = -2.0
-        # loading_pose.pose.orientation.z = -0.87
-        # loading_pose.pose.orientation.w = 0.50
+        # # # # # target pose
+        loading_pose = PoseStamped()
+        loading_pose.header.frame_id = 'map'
+        loading_pose.header.stamp = nav.get_clock().now().to_msg()
+        loading_pose.pose.position.x = 4.0
+        loading_pose.pose.position.y = -2.0
+        loading_pose.pose.orientation.z = -0.87
+        loading_pose.pose.orientation.w = 0.50
 
-        # # #move to loading pose
-        # nav.goToPose(loading_pose)
-        # while not nav.isTaskComplete():
-        #     feedback = nav.getFeedback()
-        #     if Duration.from_msg(feedback.navigation_time) > Duration(seconds=180.0):
-        #         print('Navigation has exceeded timeout of 180s, canceling the request.')
-        #         nav.cancelTask()
-        # print("arrived at loading area")
-        # # make a service call to the attach shelf service
+        # #move to loading pose
+        nav.goToPose(loading_pose)
+        while not nav.isTaskComplete():
+            feedback = nav.getFeedback()
+            if Duration.from_msg(feedback.navigation_time) > Duration(seconds=180.0):
+                print('Navigation has exceeded timeout of 180s, canceling the request.')
+                nav.cancelTask()
+        print("arrived at loading area")
+        # make a service call to the attach shelf service
         
-        # self.send_shelf_request()
+        self.send_shelf_request()
 
         # # # pick up the shelf
 
